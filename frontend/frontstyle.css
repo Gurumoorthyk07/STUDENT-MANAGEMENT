@@ -1,0 +1,77 @@
+:root {
+  --bg-deep: #140a2a;
+  --violet-1: rgba(139, 92, 246, 0.45);
+  --violet-2: rgba(168, 85, 247, 0.4);
+  --violet-3: rgba(217, 70, 239, 0.35);
+  --card-bg: rgba(237, 233, 254, 0.1);
+  --card-border: rgba(221, 214, 254, 0.2);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg-deep);
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+.signup-screen {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden;
+  background: var(--bg-deep);
+}
+
+.signup-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(80px);
+}
+
+.signup-blob-1 {
+  top: -8rem;
+  left: -6rem;
+  width: 24rem;
+  height: 24rem;
+  background: var(--violet-1);
+}
+
+.signup-blob-2 {
+  top: 6rem;
+  right: -6rem;
+  width: 28rem;
+  height: 28rem;
+  background: var(--violet-2);
+}
+
+.signup-blob-3 {
+  bottom: -7rem;
+  left: 33%;
+  width: 20rem;
+  height: 20rem;
+  background: var(--violet-3);
+}
+
+.signup-content {
+  position: relative;
+  z-index: 10;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.signup-card {
+  width: 100%;
+  max-width: 64rem;
+  height: 520px;
+  border-radius: 1.5rem;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}

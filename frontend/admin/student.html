@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Profile | Admin Portal</title>
+  <script>
+    (function () {
+      const stored = localStorage.getItem('sms-theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const theme = stored || (prefersDark ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/dashboard.css">
+  <link rel="stylesheet" href="../css/form-profile.css">
+</head>
+<body class="dashboard-body profile-page">
+
+  <div class="app-shell">
+    <aside class="sidebar animate-in slide-in-from-left duration-500" id="sidebar">
+      <div class="sidebar-glow" aria-hidden="true"></div>
+      <div class="sidebar-top">
+        <a href="../index.html" class="sidebar-brand">
+          <span class="brand-mark glow-accent">S</span>
+          <span class="brand-text">
+            <span class="brand-name">Student Mgmt</span>
+            <span class="brand-portal">Admin Portal</span>
+          </span>
+        </a>
+        <nav class="sidebar-nav" aria-label="Admin navigation">
+          <a class="nav-link" href="index.html" data-nav>
+            <span class="nav-indicator" aria-hidden="true"></span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <rect x="3" y="3" width="7" height="9" rx="1.5"/>
+              <rect x="14" y="3" width="7" height="5" rx="1.5"/>
+              <rect x="14" y="12" width="7" height="9" rx="1.5"/>
+              <rect x="3" y="16" width="7" height="5" rx="1.5"/>
+            </svg>
+            Dashboard
+          </a>
+          <a class="nav-link" href="add-student.html" data-nav>
+            <span class="nav-indicator" aria-hidden="true"></span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+            Add Student
+          </a>
+          <a class="nav-link active" href="#" data-nav>
+            <span class="nav-indicator" aria-hidden="true"></span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="12" cy="8" r="4"/>
+              <path d="M4 20a8 8 0 0 1 16 0"/>
+            </svg>
+            Student Profile
+          </a>
+        </nav>
+      </div>
+      <div class="sidebar-footer">
+        <div class="sidebar-hint">View, edit, download or delete this record</div>
+      </div>
+    </aside>
+
+    <div class="main-column">
+      <header class="top-navbar animate-in fade-in slide-in-from-top duration-500">
+        <div class="navbar-left">
+          <button type="button" class="icon-btn sidebar-toggle hover-lift" id="sidebarToggle" aria-label="Toggle sidebar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M4 7h16M4 12h16M4 17h16"/>
+            </svg>
+          </button>
+          <div class="navbar-titles">
+            <h1 class="page-title">Student Profile</h1>
+            <p class="page-subtitle">Complete student record overview</p>
+          </div>
+        </div>
+        <div class="navbar-right">
+          <span class="portal-pill">Admin Portal</span>
+          <button type="button" class="theme-toggle hover-lift" id="themeToggle" aria-label="Toggle theme" title="Toggle theme">
+            <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="12" cy="12" r="4"/>
+              <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
+            </svg>
+            <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M21 14.5A8.5 8.5 0 0 1 9.5 3 7 7 0 1 0 21 14.5z"/>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <main class="dashboard-main" id="pageContainer">
+        <div class="profile-shell">
+          <div id="viewMode">
+            <div class="profile-toolbar">
+              <a href="index.html" class="btn btn-outline btn-sm hover-scale">&larr; Back to Dashboard</a>
+              <div class="profile-actions panel-actions">
+                <button class="btn btn-outline hover-scale" id="downloadBtn">Download</button>
+                <button class="btn btn-primary hover-scale glow-on-hover" id="editBtn">Edit</button>
+                <button class="btn btn-danger hover-scale" id="deleteBtn">Delete</button>
+              </div>
+            </div>
+
+            <div id="printArea">
+              <div class="profile-hero profile-header">
+                <img id="viewPhoto" class="profile-photo" hidden alt="">
+                <div id="viewInitials" class="profile-photo"></div>
+                <div>
+                  <h2 class="profile-name" id="viewName">--</h2>
+                  <div class="profile-meta" id="viewMeta">--</div>
+                </div>
+              </div>
+
+              <div class="profile-block">
+                <div class="section-title">Basic Info</div>
+                <div class="info-grid" id="basicInfoGrid"></div>
+              </div>
+              <div class="profile-block">
+                <div class="section-title">Parent Details</div>
+                <div class="info-grid" id="parentInfoGrid"></div>
+              </div>
+              <div class="profile-block">
+                <div class="section-title">School Details</div>
+                <div class="info-grid" id="schoolInfoGrid"></div>
+              </div>
+              <div class="profile-block">
+                <div class="section-title">College Details</div>
+                <div class="info-grid" id="collegeInfoGrid"></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="editMode" style="display:none;">
+            <div class="panel-header" style="margin-bottom:12px;">
+              <h3>Edit Student</h3>
+            </div>
+            <form id="editForm">
+              <div class="form-section">
+                <div class="section-title">Basic Info</div>
+                <div class="form-grid">
+                  <div class="form-group"><label>Full Name *</label><input type="text" name="name" required></div>
+                  <div class="form-group"><label>Gender</label>
+                    <select name="gender"><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option></select>
+                  </div>
+                  <div class="form-group"><label>Age</label><input type="number" name="age"></div>
+                  <div class="form-group"><label>Date of Birth</label><input type="date" name="date_of_birth"></div>
+                  <div class="form-group"><label>Blood Group</label>
+                    <select name="blood_group"><option value="">Select</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option><option>O+</option><option>O-</option></select>
+                  </div>
+                  <div class="form-group"><label>Mobile Number</label><input type="text" name="mobile"></div>
+                  <div class="form-group"><label>Email</label><input type="email" name="email"></div>
+                  <div class="form-group full"><label>Photo (leave empty to keep current)</label><input type="file" name="photo" accept="image/*"></div>
+                </div>
+              </div>
+
+              <div class="form-section">
+                <div class="section-title">Parent Details</div>
+                <div class="form-grid">
+                  <div class="form-group"><label>Father's Name</label><input type="text" name="father_name"></div>
+                  <div class="form-group"><label>Father's Occupation</label><input type="text" name="father_occupation"></div>
+                  <div class="form-group"><label>Father's Mobile</label><input type="text" name="father_mobile"></div>
+                  <div class="form-group"><label>Mother's Name</label><input type="text" name="mother_name"></div>
+                  <div class="form-group"><label>Mother's Occupation</label><input type="text" name="mother_occupation"></div>
+                  <div class="form-group"><label>Mother's Mobile (Optional)</label><input type="text" name="mother_mobile"></div>
+                  <div class="form-group full"><label>Address</label><textarea name="address" rows="2"></textarea></div>
+                </div>
+              </div>
+
+              <div class="form-section">
+                <div class="section-title">School Details</div>
+                <div class="form-grid">
+                  <div class="form-group"><label>10th Board</label>
+                    <select name="board_10"><option value="">Select</option><option value="State Board">State Board</option><option value="CBSE">CBSE</option></select>
+                  </div>
+                  <div class="form-group"><label>10th Marks</label><input type="text" name="percentage_10"></div>
+                  <div class="form-group"><label>12th Board</label>
+                    <select name="board_12"><option value="">Select</option><option value="State Board">State Board</option><option value="CBSE">CBSE</option></select>
+                  </div>
+                  <div class="form-group"><label>12th Marks</label><input type="text" name="percentage_12"></div>
+                </div>
+              </div>
+
+              <div class="form-section">
+                <div class="section-title">College Details</div>
+                <div class="form-grid">
+                  <div class="form-group"><label>College Name</label><input type="text" name="college_name"></div>
+                  <div class="form-group"><label>Department *</label>
+                    <select name="department" required><option value="">Select</option><option value="IT">IT</option><option value="AIDS">AI &amp; DS</option></select>
+                  </div>
+                  <div class="form-group"><label>Register Number *</label><input type="text" name="register_number" required></div>
+                  <div class="form-group"><label>Academic Year</label>
+                    <select name="academic_year"><option value="">Select</option><option value="1">1st Year</option><option value="2">2nd Year</option><option value="3">3rd Year</option><option value="4">4th Year</option></select>
+                  </div>
+                  <div class="form-group"><label>Current CGPA</label><input type="text" name="cgpa"></div>
+                  <div class="form-group"><label>Scholarship</label>
+                    <select name="scholarship"><option value="">None</option><option>First Graduate</option><option>PMSS</option><option>7.5</option><option>Management</option><option>Others</option></select>
+                  </div>
+                  <div class="form-group full"><label>LinkedIn Profile</label><input type="url" name="linkedin"></div>
+                </div>
+              </div>
+
+              <div class="form-actions">
+                <button type="button" class="btn btn-outline hover-scale" id="cancelEditBtn">Cancel</button>
+                <button type="submit" class="btn btn-primary hover-scale glow-on-hover">Save Changes</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div class="sidebar-backdrop" id="sidebarBackdrop" hidden></div>
+
+<script src="../js/common.js"></script>
+<script src="../js/theme-toggle.js"></script>
+<script src="js/student-detail.js"></script>
+</body>
+</html>

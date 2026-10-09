@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IT Department Portal</title>
+  <script>
+    (function () {
+      const stored = localStorage.getItem('sms-theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const theme = stored || (prefersDark ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/dashboard.css">
+</head>
+<body class="dashboard-body portal-it">
+
+  <div class="app-shell">
+    <aside class="sidebar animate-in slide-in-from-left duration-500" id="sidebar">
+      <div class="sidebar-glow" aria-hidden="true"></div>
+      <div class="sidebar-top">
+        <a href="../index.html" class="sidebar-brand">
+          <span class="brand-mark glow-accent">IT</span>
+          <span class="brand-text">
+            <span class="brand-name">Student Mgmt</span>
+            <span class="brand-portal">IT Department</span>
+          </span>
+        </a>
+
+        <nav class="sidebar-nav" aria-label="IT navigation">
+          <a class="nav-link active" href="#" data-nav>
+            <span class="nav-indicator" aria-hidden="true"></span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <rect x="2" y="3" width="20" height="14" rx="2"/>
+              <path d="M8 21h8M12 17v4"/>
+            </svg>
+            IT Students
+          </a>
+          <a class="nav-link" href="../index.html" data-nav>
+            <span class="nav-indicator" aria-hidden="true"></span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M3 10.5 12 3l9 7.5"/>
+              <path d="M5 10v10h14V10"/>
+            </svg>
+            Main Portal
+          </a>
+        </nav>
+      </div>
+
+      <div class="sidebar-footer animate-in fade-in delay-300">
+        <div class="sidebar-hint">View-only portal for IT department students</div>
+      </div>
+    </aside>
+
+    <div class="main-column">
+      <header class="top-navbar animate-in fade-in slide-in-from-top duration-500">
+        <div class="navbar-left">
+          <button type="button" class="icon-btn sidebar-toggle hover-lift" id="sidebarToggle" aria-label="Toggle sidebar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M4 7h16M4 12h16M4 17h16"/>
+            </svg>
+          </button>
+          <div class="navbar-titles">
+            <h1 class="page-title">IT Students</h1>
+            <p class="page-subtitle">Click a student to view their full profile</p>
+          </div>
+        </div>
+
+        <div class="navbar-right">
+          <span class="portal-pill">IT Portal</span>
+          <button type="button" class="theme-toggle hover-lift" id="themeToggle" aria-label="Toggle theme" title="Toggle theme">
+            <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="12" cy="12" r="4"/>
+              <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
+            </svg>
+            <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M21 14.5A8.5 8.5 0 0 1 9.5 3 7 7 0 1 0 21 14.5z"/>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <main class="dashboard-main">
+        <section class="stats-row stats-row-single" aria-label="IT statistics">
+          <article class="stat-card animate-in fade-in slide-in-from-bottom duration-500 delay-100 hover-lift">
+            <div class="stat-icon it">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+            </div>
+            <div class="stat-body">
+              <div class="stat-label">Total IT Students</div>
+              <div class="stat-value" id="itTotal">--</div>
+            </div>
+          </article>
+        </section>
+
+        <section class="panel students-panel animate-in fade-in slide-in-from-bottom duration-700 delay-200">
+          <div class="panel-header">
+            <div>
+              <h3>IT Department Students</h3>
+              <p class="panel-desc">Search and browse IT student profiles</p>
+            </div>
+          </div>
+
+          <div class="search-bar">
+            <div class="search-field">
+              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <circle cx="11" cy="11" r="7"/>
+                <path d="m20 20-3.5-3.5"/>
+              </svg>
+              <input type="text" id="searchInput" placeholder="Search by name or register number...">
+            </div>
+            <label class="sort-control">
+              <span>Order by</span>
+              <select id="orderSelect">
+                <option value="name-asc">Name (A-Z)</option>
+                <option value="name-desc">Name (Z-A)</option>
+                <option value="register-asc">Register Number (Low-High)</option>
+                <option value="register-desc">Register Number (High-Low)</option>
+              </select>
+            </label>
+            <label class="sort-control">
+              <span>Academic year</span>
+              <select id="yearSelect">
+                <option value="all">All Years</option>
+                <option value="1">Year 1</option>
+                <option value="2">Year 2</option>
+                <option value="3">Year 3</option>
+                <option value="4">Year 4</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="table-wrap">
+            <table class="students-table">
+              <thead>
+                <tr>
+                  <th>S.No</th>
+                  <th>Student</th>
+                  <th>Register No.</th>
+                  <th>Year</th>
+                  <th>CGPA</th>
+                  <th>Mobile</th>
+                </tr>
+              </thead>
+              <tbody id="studentTableBody"></tbody>
+            </table>
+            <div id="emptyState" class="empty-state animate-in fade-in" hidden>No IT department students found yet.</div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div class="sidebar-backdrop" id="sidebarBackdrop" hidden></div>
+
+<script src="../js/common.js"></script>
+<script src="../js/theme-toggle.js"></script>
+<script src="js/it.js"></script>
+</body>
+</html>

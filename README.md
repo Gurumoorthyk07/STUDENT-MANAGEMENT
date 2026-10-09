@@ -79,3 +79,4 @@ This shows the landing page with 3 portal cards → Admin, IT Department, AI & D
 - Download button on a student profile (Admin) opens the browser print dialog — "Save as PDF" pannikalam.
 - If port 5000 already used pannirundha, `.env` la `PORT` value change pannikalam.
 # STUDENT-DATABASE
+# STUDENT-MANAGEMENT

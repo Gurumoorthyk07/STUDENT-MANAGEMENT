@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Add Student | Admin Portal</title>
+  <script>
+    (function () {
+      const stored = localStorage.getItem('sms-theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const theme = stored || (prefersDark ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/dashboard.css">
+  <link rel="stylesheet" href="../css/form-profile.css">
+</head>
+<body class="dashboard-body form-page">
+
+  <div class="app-shell">
+    <aside class="sidebar animate-in slide-in-from-left duration-500" id="sidebar">
+      <div class="sidebar-glow" aria-hidden="true"></div>
+      <div class="sidebar-top">
+        <a href="../index.html" class="sidebar-brand">
+          <span class="brand-mark glow-accent">S</span>
+          <span class="brand-text">
+            <span class="brand-name">Student Mgmt</span>
+            <span class="brand-portal">Admin Portal</span>
+          </span>
+        </a>
+        <nav class="sidebar-nav" aria-label="Admin navigation">
+          <a class="nav-link" href="index.html" data-nav>
+            <span class="nav-indicator" aria-hidden="true"></span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <rect x="3" y="3" width="7" height="9" rx="1.5"/>
+              <rect x="14" y="3" width="7" height="5" rx="1.5"/>
+              <rect x="14" y="12" width="7" height="9" rx="1.5"/>
+              <rect x="3" y="16" width="7" height="5" rx="1.5"/>
+            </svg>
+            Dashboard
+          </a>
+          <a class="nav-link active" href="#" data-nav>
+            <span class="nav-indicator" aria-hidden="true"></span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+            Add Student
+          </a>
+          <a class="nav-link" href="../index.html" data-nav>
+            <span class="nav-indicator" aria-hidden="true"></span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M3 10.5 12 3l9 7.5"/>
+              <path d="M5 10v10h14V10"/>
+            </svg>
+            Main Portal
+          </a>
+        </nav>
+      </div>
+      <div class="sidebar-footer">
+        <div class="sidebar-hint">Create or bulk-import student records</div>
+      </div>
+    </aside>
+
+    <div class="main-column">
+      <header class="top-navbar animate-in fade-in slide-in-from-top duration-500">
+        <div class="navbar-left">
+          <button type="button" class="icon-btn sidebar-toggle hover-lift" id="sidebarToggle" aria-label="Toggle sidebar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M4 7h16M4 12h16M4 17h16"/>
+            </svg>
+          </button>
+          <div class="navbar-titles">
+            <h1 class="page-title">Add New Student</h1>
+            <p class="page-subtitle">Fill in the student's complete details</p>
+          </div>
+        </div>
+        <div class="navbar-right">
+          <a href="index.html" class="btn btn-outline hover-scale">Cancel</a>
+          <button type="button" class="theme-toggle hover-lift" id="themeToggle" aria-label="Toggle theme" title="Toggle theme">
+            <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="12" cy="12" r="4"/>
+              <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
+            </svg>
+            <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M21 14.5A8.5 8.5 0 0 1 9.5 3 7 7 0 1 0 21 14.5z"/>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <main class="dashboard-main">
+        <div class="form-shell">
+          <form id="addStudentForm">
+            <div class="form-section">
+              <div class="section-title">Basic Info</div>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="student-name">Full Name *</label>
+                  <input id="student-name" type="text" name="name" required>
+                </div>
+                <div class="form-group">
+                  <label for="student-gender">Gender</label>
+                  <select id="student-gender" name="gender">
+                    <option value="">Select</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="student-age">Age</label>
+                  <input id="student-age" type="number" name="age" min="15" max="30">
+                </div>
+                <div class="form-group">
+                  <label for="student-date-of-birth">Date of Birth</label>
+                  <input id="student-date-of-birth" type="date" name="date_of_birth">
+                </div>
+                <div class="form-group">
+                  <label for="blood-group">Blood Group</label>
+                  <select id="blood-group" name="blood_group">
+                    <option value="">Select</option>
+                    <option>A+</option><option>A-</option>
+                    <option>B+</option><option>B-</option>
+                    <option>AB+</option><option>AB-</option>
+                    <option>O+</option><option>O-</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Mobile Number</label>
+                  <input type="text" name="mobile" placeholder="10-digit number">
+                </div>
+                <div class="form-group">
+                  <label for="student-email">Email</label>
+                  <input id="student-email" type="email" name="email">
+                </div>
+                <div class="form-group full">
+                  <label for="student-photo">Photo</label>
+                  <input id="student-photo" type="file" name="photo" accept="image/*">
+                </div>
+              </div>
+            </div>
+
+            <div class="form-section">
+              <div class="section-title">Parent Details</div>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="father-name">Father's Name</label>
+                  <input id="father-name" type="text" name="father_name">
+                </div>
+                <div class="form-group">
+                  <label for="father-occupation">Father's Occupation</label>
+                  <input id="father-occupation" type="text" name="father_occupation">
+                </div>
+                <div class="form-group">
+                  <label for="father-mobile">Father's Mobile Number</label>
+                  <input id="father-mobile" type="text" name="father_mobile">
+                </div>
+                <div class="form-group">
+                  <label for="mother-name">Mother's Name</label>
+                  <input id="mother-name" type="text" name="mother_name">
+                </div>
+                <div class="form-group">
+                  <label for="mother-occupation">Mother's Occupation</label>
+                  <input id="mother-occupation" type="text" name="mother_occupation">
+                </div>
+                <div class="form-group">
+                  <label for="mother-mobile">Mother's Mobile Number (Optional)</label>
+                  <input id="mother-mobile" type="text" name="mother_mobile">
+                </div>
+                <div class="form-group full">
+                  <label for="student-address">Address</label>
+                  <textarea id="student-address" name="address" rows="2"></textarea>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-section">
+              <div class="section-title">School Details (10th &amp; 12th)</div>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="board-10">10th Board</label>
+                  <select id="board-10" name="board_10">
+                    <option value="">Select</option>
+                    <option value="State Board">State Board</option>
+                    <option value="CBSE">CBSE</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>10th Marks</label>
+                  <input type="text" name="percentage_10" placeholder="e.g. 92">
+                </div>
+                <div class="form-group">
+                  <label for="board-12">12th Board</label>
+                  <select id="board-12" name="board_12">
+                    <option value="">Select</option>
+                    <option value="State Board">State Board</option>
+                    <option value="CBSE">CBSE</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>12th Marks</label>
+                  <input type="text" name="percentage_12" placeholder="e.g. 88">
+                </div>
+              </div>
+            </div>
+
+            <div class="form-section">
+              <div class="section-title">College Details</div>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="college-name">College Name</label>
+                  <input id="college-name" type="text" name="college_name">
+                </div>
+                <div class="form-group">
+                  <label for="student-department">Department *</label>
+                  <select id="student-department" name="department" required>
+                    <option value="">Select</option>
+                    <option value="IT">IT</option>
+                    <option value="AIDS">AI &amp; DS</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="register-number">Register Number *</label>
+                  <input id="register-number" type="text" name="register_number" required>
+                </div>
+                <div class="form-group">
+                  <label for="academic-year">Academic Year</label>
+                  <select id="academic-year" name="academic_year">
+                    <option value="">Select</option>
+                    <option value="1">1st Year</option>
+                    <option value="2">2nd Year</option>
+                    <option value="3">3rd Year</option>
+                    <option value="4">4th Year</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Current CGPA</label>
+                  <input type="text" name="cgpa" placeholder="e.g. 8.4">
+                </div>
+                <div class="form-group">
+                  <label for="student-scholarship">Scholarship</label>
+                  <select id="student-scholarship" name="scholarship">
+                    <option value="">None</option>
+                    <option value="First Graduate">First Graduate</option>
+                    <option value="PMSS">PMSS</option>
+                    <option value="7.5">7.5</option>
+                    <option value="Management">Management</option>
+                    <option value="Others">Others</option>
+                  </select>
+                </div>
+                <div class="form-group full">
+                  <label>LinkedIn Profile</label>
+                  <input type="url" name="linkedin" placeholder="https://linkedin.com/in/...">
+                </div>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <a href="index.html" class="btn btn-outline hover-scale">Cancel</a>
+              <button type="submit" class="btn btn-primary hover-scale glow-on-hover">Save Student</button>
+            </div>
+
+            <div class="bulk-import-box">
+              <div class="section-title">Bulk Import</div>
+              <p class="form-help">Upload a CSV, Excel, or JSON file with one student per row. Required columns: <strong>name</strong>, <strong>department</strong> (IT or AIDS), and <strong>register_number</strong>.</p>
+              <div class="bulk-import-controls">
+                <label for="bulkStudentFile" class="sr-only">Bulk student data file</label>
+                <input id="bulkStudentFile" type="file" accept=".csv,.xlsx,.xls,.json,application/json,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel">
+                <button id="bulkImportButton" type="button" class="btn btn-outline hover-scale">Import Students</button>
+              </div>
+              <p class="form-help">Use the same field names as the manual form, such as <strong>email</strong>, <strong>mobile</strong>, <strong>college_name</strong>, and <strong>academic_year</strong>.</p>
+            </div>
+          </form>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div class="sidebar-backdrop" id="sidebarBackdrop" hidden></div>
+
+<script src="../js/common.js"></script>
+<script src="../js/theme-toggle.js"></script>
+<script>
+document.getElementById('addStudentForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+
+  try {
+    const res = await fetch(API_BASE + '/students', {
+      method: 'POST',
+      body: formData
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      showToast(data.error || 'Failed to add student', true);
+      return;
+    }
+
+    showToast('Student added successfully!');
+    setTimeout(() => window.location.href = 'index.html', 800);
+  } catch (err) {
+    showToast('Server error. Check backend connection.', true);
+  }
+});
+
+document.getElementById('bulkImportButton').addEventListener('click', async () => {
+  const fileInput = document.getElementById('bulkStudentFile');
+  const file = fileInput.files[0];
+  if (!file) {
+    showToast('Choose a CSV, Excel, or JSON file first', true);
+    return;
+  }
+
+  const button = document.getElementById('bulkImportButton');
+  const formData = new FormData();
+  formData.append('file', file);
+  button.disabled = true;
+  button.textContent = 'Importing...';
+
+  try {
+    const res = await fetch(API_BASE + '/students/bulk', { method: 'POST', body: formData });
+    const data = await res.json();
+    if (!res.ok) {
+      const details = data.details ? `: ${data.details.join('; ')}` : '';
+      showToast((data.error || 'Bulk import failed') + details, true);
+      return;
+    }
+
+    showToast(`${data.imported} students imported successfully`);
+    setTimeout(() => window.location.href = 'index.html', 900);
+  } catch (err) {
+    showToast('Server error. Check backend connection.', true);
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Import Students';
+  }
+});
+</script>
+</body>
+</html>
