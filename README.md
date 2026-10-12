@@ -78,5 +78,22 @@ This shows the landing page with 3 portal cards → Admin, IT Department, AI & D
 - IT & AI&DS portals are **view-only** — no edit/delete there (as requested).
 - Download button on a student profile (Admin) opens the browser print dialog — "Save as PDF" pannikalam.
 - If port 5000 already used pannirundha, `.env` la `PORT` value change pannikalam.
+
+## Deploy to Render
+
+Create a new Blueprint in Render using `render.yaml` at the repository root. The
+Blueprint installs and starts the backend while keeping the repository root as
+the service root, so Express can serve the `frontend/` directory.
+
+Before deploying, provision a reachable MySQL database and load
+`backend/schema.sql` into it. When prompted by the Blueprint, set `DB_HOST`,
+`DB_USER`, `DB_PASSWORD`, and `DB_NAME` to that database's connection details.
+`DB_PORT` defaults to `3306`; change it if the provider uses another port.
+Render supplies `PORT` automatically, so do not set it manually.
+
+Render's local filesystem is ephemeral. Student photos uploaded at runtime may
+be lost on redeploy or restart; attach a persistent disk mounted at
+`backend/uploads` (using the service's absolute mount path) if uploaded photos
+must persist. Persistent disks require a paid Render service.
 # STUDENT-DATABASE
 # STUDENT-MANAGEMENT

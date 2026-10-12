@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: student-management
+    runtime: node
+    plan: free
+    buildCommand: npm ci --prefix backend
+    startCommand: npm start --prefix backend
+    envVars:
+      - key: DB_HOST
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_NAME
+        sync: false
+      - key: DB_PORT
+        value: "3306"
