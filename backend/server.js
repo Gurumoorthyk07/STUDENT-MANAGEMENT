@@ -484,7 +484,7 @@ app.get('/api/students', async (req, res) => {
     const [rows] = await db.query(sql, params);
     res.json(rows.map(exposeBoardAliases));
   } catch (err) {
-    console.error(err);
+    console.error('Failed to fetch students:', err);
     res.status(500).json({ error: 'Failed to fetch students' });
   }
 });
