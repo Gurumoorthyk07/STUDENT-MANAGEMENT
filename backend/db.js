@@ -1,5 +1,6 @@
 const mysql = require('mysql2');
 const path = require('path');
+const fs = require('fs'); // 1. fs module-ai import pannunga
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const pool = mysql.createPool({
@@ -8,7 +9,10 @@ const pool = mysql.createPool({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   port: process.env.DB_PORT,
-  ssl: { rejectUnauthorized: true },
+  ssl: { 
+    ca: fs.readFileSync(path.join(__dirname, 'ca.pem')), // 2. ca.pem file-ai ikku pass pannunga
+    rejectUnauthorized: true 
+  },
   dateStrings: ['DATE'],
   waitForConnections: true,
   connectionLimit: 10,
