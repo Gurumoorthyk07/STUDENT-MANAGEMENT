@@ -480,7 +480,6 @@ app.get('/api/students', async (req, res) => {
       sql += ' WHERE department = ?';
       params.push(department);
     }
-    sql += ' ORDER BY id DESC';
     const [rows] = await db.query(sql, params);
     res.json(rows.map(exposeBoardAliases));
   } catch (err) {
@@ -676,7 +675,7 @@ app.get('/api/stats', async (req, res) => {
 
 async function startServer() {
   try {
-    await db.query('ALTER TABLE students ADD COLUMN date_of_birth DATE AFTER age');
+    await db.query('ALTER TABLE students ADD COLUMN date_of_birth DATE');
   } catch (err) {
     if (err.code !== 'ER_DUP_FIELDNAME') throw err;
   }
