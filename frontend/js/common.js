@@ -1,5 +1,5 @@
 // When the frontend is served by Express from the same origin, use that backend.
-// Otherwise fall back to the project backend on the default local port.
+// Otherwise use the deployed project backend.
 const API_BASE = (() => {
   const currentOrigin = `${window.location.protocol}//${window.location.hostname}${window.location.port ? `:${window.location.port}` : ''}`;
 
@@ -8,7 +8,7 @@ const API_BASE = (() => {
     return `${currentOrigin}/api`;
   }
 
-  return 'http://localhost:5000/api';
+  return 'https://student-management-1-acc5.onrender.com/api';
 })();
 
 function showToast(message, isError = false) {
