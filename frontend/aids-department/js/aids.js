@@ -4,7 +4,7 @@ let currentYear = 'all';
 
 async function loadStudents() {
   try {
-    allStudents = await apiGet('/students?department=AIDS');
+    allStudents = await apiGetStudents('?department=AIDS');
     document.getElementById('aidsTotal').textContent = allStudents.length;
     renderTable(sortStudents(allStudents, currentOrder));
   } catch (e) {

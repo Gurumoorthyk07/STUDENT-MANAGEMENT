@@ -1,6 +1,3 @@
-// 💡 Render Backend URL-ஐ இங்கு குறிப்பிடவும்
-const API_BASE_URL = "https://student-management-1-acc5.onrender.com/api";
-
 let allStudents = [];
 let currentOrder = 'name-asc';
 let currentYear = 'all';
@@ -21,7 +18,7 @@ async function loadStats() {
 
 async function loadStudents() {
   try {
-    allStudents = await apiGet('/students');
+    allStudents = await apiGetStudents();
     renderTable(sortStudents(allStudents, currentOrder));
   } catch (e) {
     showToast('Failed to load students', true);

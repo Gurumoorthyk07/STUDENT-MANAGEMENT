@@ -1,15 +1,4 @@
-// When the frontend is served by Express from the same origin, use that backend.
-// Otherwise use the deployed project backend.
-const API_BASE = (() => {
-  const currentOrigin = `${window.location.protocol}//${window.location.hostname}${window.location.port ? `:${window.location.port}` : ''}`;
-
-  if ((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') &&
-      (!window.location.port || window.location.port === '5000')) {
-    return `${currentOrigin}/api`;
-  }
-
-  return 'https://student-management-1-acc5.onrender.com/api';
-})();
+const API_BASE = `${window.location.origin}/api`;
 
 function showToast(message, isError = false) {
   let toast = document.getElementById('toast');
@@ -114,6 +103,23 @@ async function apiGet(path) {
   const res = await fetch(API_BASE + path);
   if (!res.ok) throw new Error('Request failed');
   return res.json();
+}
+
+async function apiGetStudents(query = '') {
+  const students = await apiGet(`/students${query}`);
+  if (!Array.isArray(students)) {
+    throw new Error('Expected the students API to return an array');
+  }
+
+  return students.map(student => ({
+    ...student,
+    id: student.id ?? student.student_id,
+    name: student.name ?? student.full_name ?? student.student_name,
+    register_number: student.register_number ?? student.register_no ?? student.reg_no,
+    department: student.department ?? student.dept,
+    academic_year: student.academic_year ?? student.year_of_study,
+    mobile: student.mobile ?? student.phone_number
+  }));
 }
 
 async function apiDelete(path) {
