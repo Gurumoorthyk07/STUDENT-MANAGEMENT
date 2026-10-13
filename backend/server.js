@@ -49,6 +49,54 @@ const studentFields = [
 ];
 const scholarshipCategories = ['First Graduate', 'PMSS', '7.5', 'Management', 'Others'];
 const dynamicFieldName = 'imported_fields';
+let studentTableColumns = new Set();
+const studentColumnAliases = {
+  name: ['full_name', 'student_name', 'name'],
+  mobile: ['mobile', 'phone_number'],
+  academic_year: ['academic_year', 'year_of_study']
+};
+
+async function loadStudentTableColumns() {
+  const [columns] = await db.query('SHOW COLUMNS FROM students');
+  studentTableColumns = new Set(columns.map(column => String(column.Field).toLowerCase()));
+}
+
+function getStudentColumn(field) {
+  const candidates = studentColumnAliases[field] || [field];
+  return candidates.find(column => studentTableColumns.has(column)) || null;
+}
+
+function buildStudentInsert(student, upsert = false) {
+  if (student.name && !getStudentColumn('name')) {
+    throw new Error('The students table has no supported student-name column');
+  }
+
+  const fields = [...studentFields, dynamicFieldName];
+  const entries = fields.flatMap(field => {
+    const column = getStudentColumn(field);
+    if (!column || !Object.prototype.hasOwnProperty.call(student, field)) return [];
+
+    const value = student[field];
+    return [[column, field === dynamicFieldName ? JSON.stringify(value || {}) : value === '' ? null : value]];
+  });
+  if (entries.length === 0) {
+    throw new Error('No student fields in the request match columns in the students table');
+  }
+
+  const quotedColumns = entries.map(([column]) => `\`${column}\``);
+  let sql = `INSERT INTO students (${quotedColumns.join(', ')}) VALUES (${entries.map(() => '?').join(', ')})`;
+  if (upsert) {
+    const updateEntries = entries.filter(([column]) => column !== 'register_number');
+    const updates = updateEntries.length > 0
+      ? updateEntries
+      : [entries[0]];
+    sql += ` ON DUPLICATE KEY UPDATE ${updates.map(([column]) => column === 'photo'
+      ? `\`photo\`=COALESCE(NULLIF(VALUES(\`photo\`), ''), \`photo\`)`
+      : `\`${column}\`=VALUES(\`${column}\`)`).join(', ')}`;
+  }
+
+  return { sql, values: entries.map(([, value]) => value) };
+}
 
 function normalizeScholarship(value) {
   const text = String(value ?? '').trim();
@@ -428,44 +476,6 @@ function validateBulkRows(rows) {
   return { errors, students };
 }
 
-function studentValues(student) {
-  const valueOrNull = (field) => {
-    const value = student[field];
-    return value === '' || value === undefined ? null : value;
-  };
-
-  return [
-    valueOrNull('name'), valueOrNull('gender'), valueOrNull('date_of_birth'),
-    valueOrNull('blood_group'), valueOrNull('mobile'), valueOrNull('email'), valueOrNull('photo'),
-    valueOrNull('father_name'), valueOrNull('father_occupation'), valueOrNull('father_mobile'),
-    valueOrNull('mother_name'), valueOrNull('mother_occupation'), valueOrNull('mother_mobile'),
-    valueOrNull('address'),
-    valueOrNull('board_10'), valueOrNull('percentage_10'),
-    valueOrNull('board_12'), valueOrNull('percentage_12'),
-    valueOrNull('college_name'), valueOrNull('department'), valueOrNull('register_number'),
-    valueOrNull('academic_year'), valueOrNull('cgpa'), valueOrNull('scholarship'), valueOrNull('linkedin'),
-    JSON.stringify(student[dynamicFieldName] || {})
-  ];
-}
-
-const studentInsertSql = `INSERT INTO students
-  (full_name, gender, date_of_birth, blood_group, mobile, email, photo,
-   father_name, father_occupation, father_mobile,
-   mother_name, mother_occupation, mother_mobile,
-   address, board_10, percentage_10, board_12, percentage_12,
-  college_name, department, register_number, academic_year, cgpa, scholarship, linkedin, imported_fields)
-  VALUES (${studentFields.filter(field => field !== 'age').map(() => '?').join(',')}, ?)
-  ON DUPLICATE KEY UPDATE
-    full_name=VALUES(full_name), gender=VALUES(gender), date_of_birth=VALUES(date_of_birth),
-    blood_group=VALUES(blood_group), mobile=VALUES(mobile), email=VALUES(email),
-    photo=COALESCE(NULLIF(VALUES(photo), ''), photo),
-    father_name=VALUES(father_name), father_occupation=VALUES(father_occupation), father_mobile=VALUES(father_mobile),
-    mother_name=VALUES(mother_name), mother_occupation=VALUES(mother_occupation), mother_mobile=VALUES(mother_mobile),
-    address=VALUES(address), board_10=VALUES(board_10), percentage_10=VALUES(percentage_10),
-    board_12=VALUES(board_12), percentage_12=VALUES(percentage_12), college_name=VALUES(college_name),
-    department=VALUES(department), academic_year=VALUES(academic_year), cgpa=VALUES(cgpa),
-    scholarship=VALUES(scholarship), linkedin=VALUES(linkedin), imported_fields=VALUES(imported_fields)`;
-
 // ============================================
 //                STUDENT ROUTES
 // ============================================
@@ -474,7 +484,8 @@ const studentInsertSql = `INSERT INTO students
 app.get('/api/students', async (req, res) => {
   try {
     const { department } = req.query;
-    let sql = 'SELECT *, full_name AS name FROM students';
+    const nameColumn = getStudentColumn('name');
+    let sql = `SELECT *${nameColumn ? `, \`${nameColumn}\` AS name` : ''} FROM students`;
     const params = [];
     if (department) {
       sql += ' WHERE department = ?';
@@ -491,7 +502,9 @@ app.get('/api/students', async (req, res) => {
 // GET single student by id
 app.get('/api/students/:id', async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT *, full_name AS name FROM students WHERE id = ?', [req.params.id]);
+    const nameColumn = getStudentColumn('name');
+    const sql = `SELECT *${nameColumn ? `, \`${nameColumn}\` AS name` : ''} FROM students WHERE id = ?`;
+    const [rows] = await db.query(sql, [req.params.id]);
     if (rows.length === 0) return res.status(404).json({ error: 'Student not found' });
     res.json(exposeBoardAliases(rows[0]));
   } catch (err) {
@@ -510,24 +523,14 @@ app.post('/api/students', upload.single('photo'), async (req, res) => {
     }
     const photo = req.file ? '/uploads/' + req.file.filename : null;
 
-    const sql = `INSERT INTO students
-      (full_name, gender, date_of_birth, blood_group, mobile, email, photo,
-       father_name, father_occupation, father_mobile,
-       mother_name, mother_occupation, mother_mobile,
-       address,
-       board_10, percentage_10, board_12, percentage_12,
-       college_name, department, register_number, academic_year, cgpa, scholarship, linkedin)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
-
-    const values = [
-      b.name, b.gender, b.date_of_birth || null, b.blood_group, b.mobile, b.email, photo,
-      b.father_name, b.father_occupation, b.father_mobile,
-      b.mother_name, b.mother_occupation, b.mother_mobile,
-      b.address,
-      b.board_10, b.percentage_10, b.board_12, b.percentage_12,
-      b.college_name, b.department, b.register_number, b.academic_year || null, b.cgpa, scholarship || null, b.linkedin
-    ];
-
+    const student = {
+      ...b,
+      name: b.name ?? b.full_name,
+      date_of_birth: b.date_of_birth || null,
+      photo,
+      scholarship: scholarship || null
+    };
+    const { sql, values } = buildStudentInsert(student);
     const [result] = await db.query(sql, values);
     res.status(201).json({ message: 'Student added successfully', id: result.insertId });
   } catch (err) {
@@ -566,7 +569,8 @@ app.post('/api/students/bulk', bulkUpload.single('file'), async (req, res) => {
     try {
       await connection.beginTransaction();
       for (const student of students) {
-        await connection.query(studentInsertSql, studentValues(student));
+        const { sql, values } = buildStudentInsert(student, true);
+        await connection.query(sql, values);
       }
       await connection.commit();
     } catch (err) {
@@ -702,6 +706,8 @@ async function startServer() {
       }
     }
   }
+
+  await loadStudentTableColumns();
 
   app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
