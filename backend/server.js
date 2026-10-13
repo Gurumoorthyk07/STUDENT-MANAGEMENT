@@ -23,8 +23,8 @@ if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
 app.use('/uploads', express.static(uploadsDir));
 
 // Serve frontend (Admin / IT / AIDS portals)
-const frontendDir = path.join(__dirname, '..', 'frontend');
-app.use(express.static(frontendDir));
+const frontendDir = path.resolve(__dirname, '..', 'frontend');
+app.use(express.static(frontendDir, { index: 'index.html' }));
 
 // ------------ Multer (photo upload) ------------
 const storage = multer.diskStorage({
@@ -780,7 +780,7 @@ async function startServer() {
 
   await loadStudentTableColumns();
 
-  app.listen(PORT, () => {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
 }
