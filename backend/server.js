@@ -435,7 +435,7 @@ function studentValues(student) {
   };
 
   return [
-    valueOrNull('name'), valueOrNull('gender'), valueOrNull('age'), valueOrNull('date_of_birth'),
+    valueOrNull('name'), valueOrNull('gender'), valueOrNull('date_of_birth'),
     valueOrNull('blood_group'), valueOrNull('mobile'), valueOrNull('email'), valueOrNull('photo'),
     valueOrNull('father_name'), valueOrNull('father_occupation'), valueOrNull('father_mobile'),
     valueOrNull('mother_name'), valueOrNull('mother_occupation'), valueOrNull('mother_mobile'),
@@ -449,14 +449,14 @@ function studentValues(student) {
 }
 
 const studentInsertSql = `INSERT INTO students
-  (name, gender, age, date_of_birth, blood_group, mobile, email, photo,
+  (name, gender, date_of_birth, blood_group, mobile, email, photo,
    father_name, father_occupation, father_mobile,
    mother_name, mother_occupation, mother_mobile,
    address, board_10, percentage_10, board_12, percentage_12,
   college_name, department, register_number, academic_year, cgpa, scholarship, linkedin, imported_fields)
-  VALUES (${studentFields.map(() => '?').join(',')}, ?)
+  VALUES (${studentFields.filter(field => field !== 'age').map(() => '?').join(',')}, ?)
   ON DUPLICATE KEY UPDATE
-    name=VALUES(name), gender=VALUES(gender), age=VALUES(age), date_of_birth=VALUES(date_of_birth),
+    name=VALUES(name), gender=VALUES(gender), date_of_birth=VALUES(date_of_birth),
     blood_group=VALUES(blood_group), mobile=VALUES(mobile), email=VALUES(email),
     photo=COALESCE(NULLIF(VALUES(photo), ''), photo),
     father_name=VALUES(father_name), father_occupation=VALUES(father_occupation), father_mobile=VALUES(father_mobile),
@@ -511,16 +511,16 @@ app.post('/api/students', upload.single('photo'), async (req, res) => {
     const photo = req.file ? '/uploads/' + req.file.filename : null;
 
     const sql = `INSERT INTO students
-      (name, gender, age, date_of_birth, blood_group, mobile, email, photo,
+      (name, gender, date_of_birth, blood_group, mobile, email, photo,
        father_name, father_occupation, father_mobile,
        mother_name, mother_occupation, mother_mobile,
        address,
        board_10, percentage_10, board_12, percentage_12,
        college_name, department, register_number, academic_year, cgpa, scholarship, linkedin)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`;
 
     const values = [
-      b.name, b.gender, b.age || null, b.date_of_birth || null, b.blood_group, b.mobile, b.email, photo,
+      b.name, b.gender, b.date_of_birth || null, b.blood_group, b.mobile, b.email, photo,
       b.father_name, b.father_occupation, b.father_mobile,
       b.mother_name, b.mother_occupation, b.mother_mobile,
       b.address,
