@@ -34,6 +34,7 @@ app.use('/uploads', express.static(uploadsDir));
 
 // Serve frontend (Admin / IT / AIDS portals)
 const frontendDir = path.resolve(__dirname, '..', 'frontend');
+app.get('/', (req, res) => res.redirect('/admin/index.html'));
 app.use(express.static(frontendDir, { index: 'index.html' }));
 
 // ------------ Multer (photo upload) ------------
