@@ -3,16 +3,21 @@ const path = require('path');
 const fs = require('fs'); // 1. fs module-ai import pannunga
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
+const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+const ssl = isProduction
+  ? { rejectUnauthorized: false }
+  : {
+      ca: fs.readFileSync(path.join(__dirname, 'ca.pem')),
+      rejectUnauthorized: true
+    };
+
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   port: process.env.DB_PORT,
-  ssl: { 
-    ca: fs.readFileSync(path.join(__dirname, 'ca.pem')), // 2. ca.pem file-ai ikku pass pannunga
-    rejectUnauthorized: true 
-  },
+  ssl,
   dateStrings: ['DATE'],
   waitForConnections: true,
   connectionLimit: 10,

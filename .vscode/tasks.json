@@ -1,0 +1,12 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Start Student Management Backend",
+			"type": "shell",
+			"command": "npm start --prefix backend",
+			"isBackground": true,
+			"problemMatcher": []
+		}
+	]
+}
