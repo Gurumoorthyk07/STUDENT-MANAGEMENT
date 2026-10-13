@@ -31,6 +31,9 @@ Open terminal in VS Code and run:
 mysql -u root -p < backend/schema.sql
 ```
 This creates the `student_management` database with the `students` table.
+The backend reads the `students` table columns at startup and limits manual and
+bulk-import inserts to supplied fields supported by that table. The student
+name column can be `full_name`, `student_name`, or `name`.
 
 ### 3. Configure environment
 ```bash
