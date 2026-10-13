@@ -49,28 +49,70 @@ const studentFields = [
 ];
 const scholarshipCategories = ['First Graduate', 'PMSS', '7.5', 'Management', 'Others'];
 const dynamicFieldName = 'imported_fields';
-let studentTableColumns = new Set();
+let studentTableColumns = new Map();
+let studentPrimaryKey = null;
 const studentColumnAliases = {
   name: ['full_name', 'student_name', 'name'],
   mobile: ['mobile', 'phone_number'],
+  department: ['department', 'dept'],
+  register_number: ['register_number', 'register_no', 'reg_no'],
   academic_year: ['academic_year', 'year_of_study']
 };
 
 async function loadStudentTableColumns() {
   const [columns] = await db.query('SHOW COLUMNS FROM students');
-  studentTableColumns = new Set(columns.map(column => String(column.Field).toLowerCase()));
+  studentTableColumns = new Map(columns.map(column => [String(column.Field).toLowerCase(), column.Field]));
+  studentPrimaryKey = columns.find(column => column.Key === 'PRI')?.Field || null;
 }
 
 function getStudentColumn(field) {
   const candidates = studentColumnAliases[field] || [field];
-  return candidates.find(column => studentTableColumns.has(column)) || null;
+  const found = candidates.find(column => studentTableColumns.has(column));
+  return found ? studentTableColumns.get(found) : null;
+}
+
+function quoteStudentColumn(column) {
+  if (!column || !/^[a-zA-Z0-9_]+$/.test(column)) {
+    throw new Error(`Invalid students table column: ${column}`);
+  }
+  return `\`${column}\``;
+}
+
+function getStudentPrimaryKey() {
+  if (!studentPrimaryKey) {
+    throw new Error('The students table does not have a primary key');
+  }
+  return studentPrimaryKey;
+}
+
+function buildStudentSelectSql(whereClause = '') {
+  return `SELECT * FROM students${whereClause}`;
+}
+
+function normalizeStudentRow(row) {
+  const normalized = { ...row };
+  for (const field of [...studentFields, dynamicFieldName]) {
+    const column = getStudentColumn(field);
+    if (column && column !== field && row[column] !== undefined) normalized[field] = row[column];
+  }
+  if (studentPrimaryKey && studentPrimaryKey !== 'id' && row[studentPrimaryKey] !== undefined) {
+    normalized.id = row[studentPrimaryKey];
+  }
+  return normalized;
+}
+
+function normalizeStudentInput(student) {
+  const normalized = { ...student };
+  for (const [field, aliases] of Object.entries(studentColumnAliases)) {
+    if (normalized[field] !== undefined) continue;
+    const alias = aliases.find(candidate => student[candidate] !== undefined);
+    if (alias) normalized[field] = student[alias];
+  }
+  return normalized;
 }
 
 function buildStudentInsert(student, upsert = false) {
-  if (student.name && !getStudentColumn('name')) {
-    throw new Error('The students table has no supported student-name column');
-  }
-
+  student = normalizeStudentInput(student);
   const fields = [...studentFields, dynamicFieldName];
   const entries = fields.flatMap(field => {
     const column = getStudentColumn(field);
@@ -83,19 +125,44 @@ function buildStudentInsert(student, upsert = false) {
     throw new Error('No student fields in the request match columns in the students table');
   }
 
-  const quotedColumns = entries.map(([column]) => `\`${column}\``);
+  const quotedColumns = entries.map(([column]) => quoteStudentColumn(column));
   let sql = `INSERT INTO students (${quotedColumns.join(', ')}) VALUES (${entries.map(() => '?').join(', ')})`;
   if (upsert) {
-    const updateEntries = entries.filter(([column]) => column !== 'register_number');
+    const registerNumberColumn = getStudentColumn('register_number');
+    const updateEntries = entries.filter(([column]) => column !== registerNumberColumn);
     const updates = updateEntries.length > 0
       ? updateEntries
       : [entries[0]];
     sql += ` ON DUPLICATE KEY UPDATE ${updates.map(([column]) => column === 'photo'
-      ? `\`photo\`=COALESCE(NULLIF(VALUES(\`photo\`), ''), \`photo\`)`
-      : `\`${column}\`=VALUES(\`${column}\`)`).join(', ')}`;
+      ? `${quoteStudentColumn(column)}=COALESCE(NULLIF(VALUES(${quoteStudentColumn(column)}), ''), ${quoteStudentColumn(column)})`
+      : `${quoteStudentColumn(column)}=VALUES(${quoteStudentColumn(column)})`).join(', ')}`;
   }
 
   return { sql, values: entries.map(([, value]) => value) };
+}
+
+function buildStudentUpdate(student, id, photo) {
+  student = normalizeStudentInput(student);
+  const updates = [];
+  for (const field of studentFields) {
+    if (!Object.prototype.hasOwnProperty.call(student, field)) continue;
+    const column = getStudentColumn(field);
+    if (!column) continue;
+    const value = student[field];
+    updates.push([column, value === '' ? null : value]);
+  }
+  if (photo !== undefined) {
+    const photoColumn = getStudentColumn('photo');
+    if (photoColumn) updates.push([photoColumn, photo]);
+  }
+  if (updates.length === 0) {
+    throw new Error('No supplied student fields match columns in the students table');
+  }
+
+  return {
+    sql: `UPDATE students SET ${updates.map(([column]) => `${quoteStudentColumn(column)}=?`).join(', ')} WHERE ${quoteStudentColumn(getStudentPrimaryKey())}=?`,
+    values: [...updates.map(([, value]) => value), id]
+  };
 }
 
 function normalizeScholarship(value) {
@@ -484,15 +551,19 @@ function validateBulkRows(rows) {
 app.get('/api/students', async (req, res) => {
   try {
     const { department } = req.query;
-    const nameColumn = getStudentColumn('name');
-    let sql = `SELECT *${nameColumn ? `, \`${nameColumn}\` AS name` : ''} FROM students`;
     const params = [];
+    let whereClause = '';
     if (department) {
-      sql += ' WHERE department = ?';
+      const departmentColumn = getStudentColumn('department');
+      if (!departmentColumn) {
+        return res.status(400).json({ error: 'Department filtering is unavailable for this students table' });
+      }
+      whereClause = ` WHERE ${quoteStudentColumn(departmentColumn)} = ?`;
       params.push(department);
     }
+    const sql = buildStudentSelectSql(whereClause);
     const [rows] = await db.query(sql, params);
-    res.json(rows.map(exposeBoardAliases));
+    res.json(rows.map(row => exposeBoardAliases(normalizeStudentRow(row))));
   } catch (err) {
     console.error('Failed to fetch students:', err);
     res.status(500).json({ error: 'Failed to fetch students' });
@@ -502,11 +573,11 @@ app.get('/api/students', async (req, res) => {
 // GET single student by id
 app.get('/api/students/:id', async (req, res) => {
   try {
-    const nameColumn = getStudentColumn('name');
-    const sql = `SELECT *${nameColumn ? `, \`${nameColumn}\` AS name` : ''} FROM students WHERE id = ?`;
+    const primaryKey = getStudentPrimaryKey();
+    const sql = buildStudentSelectSql(` WHERE ${quoteStudentColumn(primaryKey)} = ?`);
     const [rows] = await db.query(sql, [req.params.id]);
     if (rows.length === 0) return res.status(404).json({ error: 'Student not found' });
-    res.json(exposeBoardAliases(rows[0]));
+    res.json(exposeBoardAliases(normalizeStudentRow(rows[0])));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch student' });
@@ -609,31 +680,18 @@ app.put('/api/students/:id', upload.single('photo'), async (req, res) => {
       return res.status(400).json({ error: `Scholarship must be one of: ${scholarshipCategories.join(', ')}` });
     }
 
-    const values = [
-      b.name, b.gender, b.date_of_birth || null, b.blood_group, b.mobile, b.email,
-      b.father_name, b.father_occupation, b.father_mobile,
-      b.mother_name, b.mother_occupation, b.mother_mobile,
-      b.address,
-      b.board_10, b.percentage_10, b.board_12, b.percentage_12,
-      b.college_name, b.department, b.register_number, b.academic_year || null, b.cgpa, scholarship || null, b.linkedin
-    ];
-
-    let sql = `UPDATE students SET
-      full_name=?, gender=?, date_of_birth=?, blood_group=?, mobile=?, email=?,
-      father_name=?, father_occupation=?, father_mobile=?,
-      mother_name=?, mother_occupation=?, mother_mobile=?,
-      address=?,
-      board_10=?, percentage_10=?, board_12=?, percentage_12=?,
-      college_name=?, department=?, register_number=?, academic_year=?, cgpa=?, scholarship=?, linkedin=?`;
-
-    if (req.file) {
-      sql += ', photo=?';
-      values.push('/uploads/' + req.file.filename);
-    }
-
-    sql += ' WHERE id=?';
-    values.push(id);
-
+    const student = {
+      ...b,
+      name: b.name ?? b.full_name,
+      date_of_birth: b.date_of_birth || null,
+      academic_year: b.academic_year || null,
+      scholarship: scholarship || null
+    };
+    const { sql, values } = buildStudentUpdate(
+      student,
+      id,
+      req.file ? '/uploads/' + req.file.filename : undefined
+    );
     await db.query(sql, values);
     res.json({ message: 'Student updated successfully' });
   } catch (err) {
@@ -645,10 +703,20 @@ app.put('/api/students/:id', upload.single('photo'), async (req, res) => {
 // DELETE student
 app.delete('/api/students/:id', async (req, res) => {
   try {
-    const [students] = await db.query('SELECT photo FROM students WHERE id = ?', [req.params.id]);
+    const primaryKey = getStudentPrimaryKey();
+    const photoColumn = getStudentColumn('photo');
+    const selectedColumns = [quoteStudentColumn(primaryKey)];
+    if (photoColumn) selectedColumns.push(`${quoteStudentColumn(photoColumn)} AS photo`);
+    const [students] = await db.query(
+      `SELECT ${selectedColumns.join(', ')} FROM students WHERE ${quoteStudentColumn(primaryKey)} = ?`,
+      [req.params.id]
+    );
     if (students.length === 0) return res.status(404).json({ error: 'Student not found' });
 
-    await db.query('DELETE FROM students WHERE id = ?', [req.params.id]);
+    await db.query(
+      `DELETE FROM students WHERE ${quoteStudentColumn(primaryKey)} = ?`,
+      [req.params.id]
+    );
 
     const photo = students[0].photo;
     if (photo && photo.startsWith('/uploads/')) {
@@ -669,7 +737,10 @@ app.delete('/api/students/:id', async (req, res) => {
 app.get('/api/stats', async (req, res) => {
   try {
     const [[total]] = await db.query('SELECT COUNT(*) as count FROM students');
-    const [byDept] = await db.query('SELECT department, COUNT(*) as count FROM students GROUP BY department');
+    const departmentColumn = getStudentColumn('department');
+    const [byDept] = departmentColumn
+      ? await db.query(`SELECT ${quoteStudentColumn(departmentColumn)} AS department, COUNT(*) as count FROM students GROUP BY ${quoteStudentColumn(departmentColumn)}`)
+      : [[]];
     res.json({ total: total.count, byDepartment: byDept });
   } catch (err) {
     console.error(err);
