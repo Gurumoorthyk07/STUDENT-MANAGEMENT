@@ -11,7 +11,7 @@
     id INT AUTO_INCREMENT PRIMARY KEY,
 
     -- Basic Info
-    name VARCHAR(100) NOT NULL,
+    full_name VARCHAR(100) NOT NULL,
     gender VARCHAR(10),
     age INT,
     date_of_birth DATE,

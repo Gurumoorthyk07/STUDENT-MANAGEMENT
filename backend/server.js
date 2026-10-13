@@ -449,14 +449,14 @@ function studentValues(student) {
 }
 
 const studentInsertSql = `INSERT INTO students
-  (name, gender, date_of_birth, blood_group, mobile, email, photo,
+  (full_name, gender, date_of_birth, blood_group, mobile, email, photo,
    father_name, father_occupation, father_mobile,
    mother_name, mother_occupation, mother_mobile,
    address, board_10, percentage_10, board_12, percentage_12,
   college_name, department, register_number, academic_year, cgpa, scholarship, linkedin, imported_fields)
   VALUES (${studentFields.filter(field => field !== 'age').map(() => '?').join(',')}, ?)
   ON DUPLICATE KEY UPDATE
-    name=VALUES(name), gender=VALUES(gender), date_of_birth=VALUES(date_of_birth),
+    full_name=VALUES(full_name), gender=VALUES(gender), date_of_birth=VALUES(date_of_birth),
     blood_group=VALUES(blood_group), mobile=VALUES(mobile), email=VALUES(email),
     photo=COALESCE(NULLIF(VALUES(photo), ''), photo),
     father_name=VALUES(father_name), father_occupation=VALUES(father_occupation), father_mobile=VALUES(father_mobile),
@@ -474,7 +474,7 @@ const studentInsertSql = `INSERT INTO students
 app.get('/api/students', async (req, res) => {
   try {
     const { department } = req.query;
-    let sql = 'SELECT * FROM students';
+    let sql = 'SELECT *, full_name AS name FROM students';
     const params = [];
     if (department) {
       sql += ' WHERE department = ?';
@@ -491,7 +491,7 @@ app.get('/api/students', async (req, res) => {
 // GET single student by id
 app.get('/api/students/:id', async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT * FROM students WHERE id = ?', [req.params.id]);
+    const [rows] = await db.query('SELECT *, full_name AS name FROM students WHERE id = ?', [req.params.id]);
     if (rows.length === 0) return res.status(404).json({ error: 'Student not found' });
     res.json(exposeBoardAliases(rows[0]));
   } catch (err) {
@@ -511,7 +511,7 @@ app.post('/api/students', upload.single('photo'), async (req, res) => {
     const photo = req.file ? '/uploads/' + req.file.filename : null;
 
     const sql = `INSERT INTO students
-      (name, gender, date_of_birth, blood_group, mobile, email, photo,
+      (full_name, gender, date_of_birth, blood_group, mobile, email, photo,
        father_name, father_occupation, father_mobile,
        mother_name, mother_occupation, mother_mobile,
        address,
@@ -606,7 +606,7 @@ app.put('/api/students/:id', upload.single('photo'), async (req, res) => {
     }
 
     const values = [
-      b.name, b.gender, b.age || null, b.date_of_birth || null, b.blood_group, b.mobile, b.email,
+      b.name, b.gender, b.date_of_birth || null, b.blood_group, b.mobile, b.email,
       b.father_name, b.father_occupation, b.father_mobile,
       b.mother_name, b.mother_occupation, b.mother_mobile,
       b.address,
@@ -615,7 +615,7 @@ app.put('/api/students/:id', upload.single('photo'), async (req, res) => {
     ];
 
     let sql = `UPDATE students SET
-      name=?, gender=?, age=?, date_of_birth=?, blood_group=?, mobile=?, email=?,
+      full_name=?, gender=?, date_of_birth=?, blood_group=?, mobile=?, email=?,
       father_name=?, father_occupation=?, father_mobile=?,
       mother_name=?, mother_occupation=?, mother_mobile=?,
       address=?,
