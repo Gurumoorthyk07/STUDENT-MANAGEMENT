@@ -302,7 +302,7 @@ function canonicalFieldName(header) {
   return normalized;
 }
 
-function normalizeStudentRow(row) {
+function normalizeImportedStudentRow(row) {
   const normalized = {};
   const importedFields = {};
   Object.entries(row).forEach(([key, value]) => {
@@ -525,7 +525,7 @@ function parseBulkFile(file) {
 function validateBulkRows(rows) {
   const errors = [];
   const registerNumbers = new Set();
-  const students = rows.map(normalizeStudentRow).filter(row => Object.values(row).some(Boolean));
+  const students = rows.map(normalizeImportedStudentRow).filter(row => Object.values(row).some(Boolean));
 
   students.forEach((student, index) => {
     const rowNumber = index + 2;
