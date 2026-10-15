@@ -1,28 +1,17 @@
 const mysql = require('mysql2');
 const path = require('path');
-const fs = require('fs'); // 1. fs module-ai import pannunga
-require('dotenv').config({ path: path.join(__dirname, '.env') });
+const fs = require('fs');
 
-const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
-const isLocalDatabase = ['localhost', '127.0.0.1', '::1'].includes(
-  String(process.env.DB_HOST || '').toLowerCase()
-);
-const ssl = isLocalDatabase
-  ? false
-  : isProduction
-    ? { rejectUnauthorized: false }
-    : {
-      ca: fs.readFileSync(path.join(__dirname, 'ca.pem')),
-      rejectUnauthorized: true
-    };
-
+// Direct-ah TiDB cloud credentials-a configure panrom (Render error varatha irukka)
 const pool = mysql.createPool({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-  port: process.env.DB_PORT,
-  ssl,
+  host: 'gateway01.ap-southeast-1.prod.aws.tidbcloud.com',
+  user: '3whZrkV31XBoSEb.root',
+  password: 'R1EY5J7TzAKnF4Mo',
+  database: 'student_management001',
+  port: 4000,
+  ssl: {
+    rejectUnauthorized: false
+  },
   dateStrings: ['DATE'],
   waitForConnections: true,
   connectionLimit: 10,
