@@ -7,6 +7,8 @@ const fs = require('fs');
 const crypto = require('crypto');
 const multer = require('multer');
 const XLSX = require('xlsx');
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const db = require('./db');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
@@ -27,29 +29,31 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve uploaded photos
-const uploadsDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
-app.use('/uploads', express.static(uploadsDir));
+// ------------ Cloudinary Configuration ------------
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'student_profiles',
+    allowed_formats: ['jpg', 'png', 'jpeg', 'webp'],
+  },
+});
+const upload = multer({ storage });
+
+const bulkUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }
+});
 
 // Serve frontend (Admin / IT / AIDS portals)
 const frontendDir = path.resolve(__dirname, '..', 'frontend');
 app.get('/', (req, res) => res.redirect('/admin/index.html'));
 app.use(express.static(frontendDir, { index: 'index.html' }));
-
-// ------------ Multer (photo upload) ------------
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadsDir),
-  filename: (req, file, cb) => {
-    const unique = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, unique + path.extname(file.originalname));
-  }
-});
-const upload = multer({ storage });
-const bulkUpload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 }
-});
 
 const studentFields = [
   'name', 'gender', 'age', 'date_of_birth', 'blood_group', 'mobile', 'email', 'photo',
@@ -145,7 +149,7 @@ function buildStudentInsert(student, upsert = false) {
       ? updateEntries
       : [entries[0]];
     sql += ` ON DUPLICATE KEY UPDATE ${updates.map(([column]) => column === 'photo'
-      ? `${quoteStudentColumn(column)}=COALESCE(NULLIF(VALUES(${quoteStudentColumn(column)}), ''), ${quoteStudentColumn(column)})`
+      ? `${quoteStudentColumn(column)}=COALESCE(NULLIF(VALUES(${quoteStudentColumn(column)}), ''),${quoteStudentColumn(column)})`
       : `${quoteStudentColumn(column)}=VALUES(${quoteStudentColumn(column)})`).join(', ')}`;
   }
 
@@ -245,7 +249,6 @@ function canonicalFieldName(header) {
   const exactField = aliasLookup[compact];
   if (exactField) return exactField;
 
-  // Accept spreadsheet labels such as "10TH STD BOARD" and "12TH BOARD NAME".
   const has10th = compact.includes('10') || compact.includes('tenth') || compact.includes('sslc');
   const has12th = compact.includes('12') || compact.includes('twelfth') || compact.includes('hsc');
   const isPercentageOrMark = compact.includes('percentage') || compact.includes('percent') || compact.includes('mark');
@@ -258,27 +261,15 @@ function canonicalFieldName(header) {
     return 'board_12';
   }
 
-  if (compact.includes('father') && (compact.includes('mobile') || compact.includes('phone') || compact.includes('contact'))) {
-    return 'father_mobile';
-  }
-  if (compact.includes('mother') && (compact.includes('mobile') || compact.includes('phone') || compact.includes('contact'))) {
-    return 'mother_mobile';
-  }
-  if (compact.includes('father') && (compact.includes('occupation') || compact.includes('profession') || compact.includes('job'))) {
-    return 'father_occupation';
-  }
-  if (compact.includes('mother') && (compact.includes('occupation') || compact.includes('profession') || compact.includes('job'))) {
-    return 'mother_occupation';
-  }
+  if (compact.includes('father') && (compact.includes('mobile') || compact.includes('phone') || compact.includes('contact'))) return 'father_mobile';
+  if (compact.includes('mother') && (compact.includes('mobile') || compact.includes('phone') || compact.includes('contact'))) return 'mother_mobile';
+  if (compact.includes('father') && (compact.includes('occupation') || compact.includes('profession') || compact.includes('job'))) return 'father_occupation';
+  if (compact.includes('mother') && (compact.includes('occupation') || compact.includes('profession') || compact.includes('job'))) return 'mother_occupation';
   if (compact.includes('father') && compact.includes('name')) return 'father_name';
   if (compact.includes('mother') && compact.includes('name')) return 'mother_name';
   if (compact.includes('college') || compact.includes('institution')) return 'college_name';
-  if (compact.includes('department') || compact.includes('dept') || compact.includes('branch') || compact.includes('stream')) {
-    return 'department';
-  }
-  if (compact.includes('reg') || compact.includes('registration') || compact.includes('roll')) {
-    return 'register_number';
-  }
+  if (compact.includes('department') || compact.includes('dept') || compact.includes('branch') || compact.includes('stream')) return 'department';
+  if (compact.includes('reg') || compact.includes('registration') || compact.includes('roll')) return 'register_number';
   if (compact.includes('mobile') || compact.includes('phone') || compact.includes('contact')) return 'mobile';
   if (compact.includes('email') || compact.includes('mail')) return 'email';
   if (compact.includes('address')) return 'address';
@@ -313,19 +304,6 @@ function normalizeImportedStudentRow(row) {
     importedFields[String(key).trim() || field] = rawValue;
     if (studentFields.includes(field)) normalized[field] = normalizeImportValue(field, rawValue);
   });
-
-  // Some spreadsheets use labels such as "10th Std" or "Board of 12th".
-  // Resolve these from the raw headers before writing the canonical columns.
-  Object.entries(importedFields).forEach(([header, value]) => {
-    const compactHeader = normalizeHeader(header).replace(/_/g, '');
-    if (!value || !compactHeader.includes('board')) return;
-    if (compactHeader.includes('10') || compactHeader.includes('tenth') || compactHeader.includes('sslc')) {
-      normalized.board_10 ||= value;
-    }
-    if (compactHeader.includes('12') || compactHeader.includes('twelfth') || compactHeader.includes('hsc')) {
-      normalized.board_12 ||= value;
-    }
-  });
   normalized[dynamicFieldName] = importedFields;
   return normalized;
 }
@@ -333,13 +311,8 @@ function normalizeImportedStudentRow(row) {
 function exposeBoardAliases(student) {
   let importedFields = student[dynamicFieldName];
   if (typeof importedFields === 'string') {
-    try {
-      importedFields = JSON.parse(importedFields);
-    } catch {
-      importedFields = {};
-    }
+    try { importedFields = JSON.parse(importedFields); } catch { importedFields = {}; }
   }
-
   const importedBoardValue = (standard) => Object.entries(importedFields || {}).find(([header, value]) => {
     const compactHeader = normalizeHeader(header).replace(/_/g, '');
     const isStandard = standard === 10
@@ -361,146 +334,46 @@ function exposeBoardAliases(student) {
 
 function normalizeDateValue(value) {
   if (value === undefined || value === null || value === '') return '';
-
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
     return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}-${String(value.getDate()).padStart(2, '0')}`;
   }
-
   const text = String(value).trim();
   if (!text) return '';
-
   const isoMatch = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (isoMatch) return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
-
   const dmyMatch = text.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
   if (dmyMatch) {
     const [, day, month, year] = dmyMatch;
     return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
   }
-
-  const ymdMatch = text.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/);
-  if (ymdMatch) {
-    const [, year, month, day] = ymdMatch;
-    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-  }
-
-  // Keep unrecognised values unchanged; parsing them with Date can apply a timezone offset.
   return text;
 }
 
 function normalizePercentageValue(value) {
-  const text = String(value ?? '').trim();
-  return text.slice(0, 50);
+  return String(value ?? '').trim().slice(0, 50);
 }
 
 function normalizeBloodGroupValue(value) {
   const text = String(value ?? '').trim();
   if (!text) return '';
-
-  let cleaned = text
-    .toUpperCase()
-    .replace(/\s+/g, '')
-    .replace(/[^A-Z0-9+/-]/g, '');
-
-  if (!cleaned) return '';
-
-  cleaned = cleaned
-    .replace(/POSITIVE|POS/gi, '+')
-    .replace(/NEGATIVE|NEG/gi, '-')
-    .replace(/VE/gi, '')
-    .replace(/\++/g, '+')
-    .replace(/-+/g, '-');
-
+  let cleaned = text.toUpperCase().replace(/\s+/g, '').replace(/[^A-Z0-9+/-]/g, '');
+  cleaned = cleaned.replace(/POSITIVE|POS/gi, '+').replace(/NEGATIVE|NEG/gi, '-').replace(/VE/gi, '').replace(/\++/g, '+').replace(/-+/g, '-');
   const match = cleaned.match(/^(A|B|AB|O)(\+|-)?$/);
   if (match) return match[1] + (match[2] || '');
-
-  const short = cleaned.match(/^(A|B|AB|O)/);
-  if (short) {
-    const base = short[1];
-    if (cleaned.includes('+')) return `${base}+`;
-    if (cleaned.includes('-')) return `${base}-`;
-    return base;
-  }
-
   return cleaned.slice(0, 5);
 }
 
 function normalizeImportValue(field, value) {
   if (value === undefined || value === null) return '';
-  if (value instanceof Date && !Number.isNaN(value.getTime())) {
-    return field === 'date_of_birth' ? normalizeDateValue(value) : value.toISOString();
-  }
-
   const text = String(value).trim();
   if (field === 'date_of_birth') return normalizeDateValue(text);
   if (field === 'blood_group') return normalizeBloodGroupValue(text);
   if (['percentage_10', 'percentage_12'].includes(field)) return normalizePercentageValue(text);
-  if (field === 'photo') return normalizePhotoValue(text);
   if (field === 'academic_year') {
     const year = text.match(/(?:^|\D)([1-4])(?:\D|$)/);
     return year ? year[1] : text;
   }
   return text;
-}
-
-function normalizePhotoValue(value) {
-  if (!value) return '';
-  if (value.startsWith('data:image/')) return value;
-  return value;
-}
-
-function extractGoogleDriveFileId(value) {
-  if (!value || typeof value !== 'string') return null;
-  const match = value.match(/(?:id=|\/d\/|file\/d\/|\/uc\?id=)([a-zA-Z0-9_-]{25,})/);
-  if (match && match[1]) return match[1];
-  if (value.length > 20 && !value.includes('/')) return value.trim();
-  return null;
-}
-
-async function downloadGoogleDrivePhoto(photoUrl) {
-  try {
-    const fileId = extractGoogleDriveFileId(photoUrl);
-    if (!fileId) {
-      console.log(`[PHOTO LOG] Invalid or missing File ID for URL: ${photoUrl}`);
-      return null;
-    }
-
-    // Google CDN High-Speed Direct Image Endpoint
-    const directUrl = `https://lh3.googleusercontent.com/d/${fileId}=s1000`;
-    console.log(`[PHOTO LOG] Fetching image for File ID: ${fileId}...`);
-
-    const fileName = `student-${Date.now()}-${crypto.randomUUID()}.jpg`;
-    const outputPath = path.join(uploadsDir, fileName);
-
-    const response = await axios.get(directUrl, {
-      responseType: 'arraybuffer',
-      timeout: 15000,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-      }
-    });
-
-    const contentType = String(response.headers['content-type'] || '').toLowerCase();
-    if (response.status === 200 && response.data.byteLength > 1000 && !contentType.includes('text/html')) {
-      fs.writeFileSync(outputPath, response.data);
-      console.log(`[PHOTO LOG] Saved image to: /uploads/${fileName}`);
-      return `/uploads/${fileName}`;
-    } else {
-      console.warn(`[PHOTO LOG] Invalid response or missing image bytes for File ID: ${fileId}`);
-      return null;
-    }
-  } catch (err) {
-    console.error(`[PHOTO LOG] Error downloading drive image (${photoUrl}):`, err.message);
-    return null;
-  }
-}
-
-async function resolveImportedPhoto(student) {
-  if (!student.photo || student.photo.startsWith('/uploads/') || student.photo.startsWith('data:image/')) {
-    return student.photo || null;
-  }
-
-  return await downloadGoogleDrivePhoto(student.photo);
 }
 
 function normalizeDepartment(value) {
@@ -516,7 +389,6 @@ function parseBulkFile(file) {
     const parsed = JSON.parse(file.buffer.toString('utf8'));
     return Array.isArray(parsed) ? parsed : parsed.students;
   }
-
   const workbook = XLSX.read(file.buffer, { type: 'buffer', cellDates: true });
   const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
   return XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
@@ -539,18 +411,11 @@ function validateBulkRows(rows) {
     }
     const scholarship = normalizeScholarship(student.scholarship);
     if (scholarship === null) {
-      errors.push(`Row ${rowNumber}: scholarship must be one of ${scholarshipCategories.join(', ')}`);
+      errors.push(`Row ${rowNumber}: scholarship must be valid`);
     } else {
       student.scholarship = scholarship;
     }
-    if (student.register_number) {
-      if (registerNumbers.has(student.register_number)) {
-        errors.push(`Row ${rowNumber}: duplicate register_number in file`);
-      }
-      registerNumbers.add(student.register_number);
-    }
   });
-
   return { errors, students };
 }
 
@@ -558,7 +423,6 @@ function validateBulkRows(rows) {
 //                STUDENT ROUTES
 // ============================================
 
-// GET all students (optionally filter by department: ?department=IT)
 app.get('/api/students', async (req, res) => {
   try {
     const { department } = req.query;
@@ -566,9 +430,6 @@ app.get('/api/students', async (req, res) => {
     let whereClause = '';
     if (department) {
       const departmentColumn = getStudentColumn('department');
-      if (!departmentColumn) {
-        return res.status(400).json({ error: 'Department filtering is unavailable for this students table' });
-      }
       whereClause = ` WHERE ${quoteStudentColumn(departmentColumn)} = ?`;
       params.push(department);
     }
@@ -581,7 +442,6 @@ app.get('/api/students', async (req, res) => {
   }
 });
 
-// GET single student by id
 app.get('/api/students/:id', async (req, res) => {
   try {
     const primaryKey = getStudentPrimaryKey();
@@ -590,20 +450,21 @@ app.get('/api/students/:id', async (req, res) => {
     if (rows.length === 0) return res.status(404).json({ error: 'Student not found' });
     res.json(exposeBoardAliases(normalizeStudentRow(rows[0])));
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: 'Failed to fetch student' });
   }
 });
 
-// POST add new student (with photo upload)
+// POST add new student (Cloudinary URL saved directly!)
 app.post('/api/students', upload.single('photo'), async (req, res) => {
   try {
     const b = req.body;
     const scholarship = normalizeScholarship(b.scholarship);
     if (scholarship === null) {
-      return res.status(400).json({ error: `Scholarship must be one of: ${scholarshipCategories.join(', ')}` });
+      return res.status(400).json({ error: `Scholarship must be valid` });
     }
-    const photo = req.file ? '/uploads/' + req.file.filename : null;
+    
+    // req.file.path gives the secure Cloudinary image URL
+    const photo = req.file ? req.file.path : null;
 
     const student = {
       ...b,
@@ -624,71 +485,14 @@ app.post('/api/students', upload.single('photo'), async (req, res) => {
   }
 });
 
-// POST bulk student import from CSV, Excel, or JSON
-app.post('/api/students/bulk', bulkUpload.single('file'), async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'Please select a CSV, Excel, or JSON file' });
-
-  const downloadedPhotoPaths = [];
-  try {
-    const rows = parseBulkFile(req.file);
-    if (!Array.isArray(rows)) {
-      return res.status(400).json({ error: 'JSON must contain an array of students or a students array' });
-    }
-
-    const { errors, students } = validateBulkRows(rows);
-    if (students.length === 0) errors.push('The file does not contain any student records');
-    if (errors.length > 0) return res.status(400).json({ error: 'Import validation failed', details: errors });
-
-    for (const student of students) {
-      const localPhotoPath = await resolveImportedPhoto(student);
-      if (localPhotoPath) {
-        student.photo = localPhotoPath;
-        downloadedPhotoPaths.push(localPhotoPath);
-      }
-    }
-
-    const connection = await db.getConnection();
-    try {
-      await connection.beginTransaction();
-      for (const student of students) {
-        const { sql, values } = buildStudentInsert(student, true);
-        await connection.query(sql, values);
-      }
-      await connection.commit();
-    } catch (err) {
-      await connection.rollback();
-      if (err.code === 'ER_DUP_ENTRY') {
-        return res.status(400).json({ error: 'Import failed: a register number already exists in the database' });
-      }
-      throw err;
-    } finally {
-      connection.release();
-    }
-
-    res.status(201).json({ message: 'Students imported successfully', imported: students.length });
-  } catch (err) {
-    await Promise.all(downloadedPhotoPaths.map(photo => {
-      const photoPath = path.join(uploadsDir, path.basename(photo));
-      return fs.promises.unlink(photoPath).catch(unlinkError => {
-        if (unlinkError.code !== 'ENOENT') console.error(unlinkError);
-      });
-    }));
-    console.error(err);
-    res.status(400).json({
-      error: 'Could not process the import file',
-      details: [err.sqlMessage || err.message || 'Check the file format and column names.']
-    });
-  }
-});
-
-// PUT update student (with optional new photo)
+// PUT update student (Cloudinary URL support)
 app.put('/api/students/:id', upload.single('photo'), async (req, res) => {
   try {
     const b = req.body;
     const id = req.params.id;
     const scholarship = normalizeScholarship(b.scholarship);
     if (scholarship === null) {
-      return res.status(400).json({ error: `Scholarship must be one of: ${scholarshipCategories.join(', ')}` });
+      return res.status(400).json({ error: `Scholarship must be valid` });
     }
 
     const student = {
@@ -701,7 +505,7 @@ app.put('/api/students/:id', upload.single('photo'), async (req, res) => {
     const { sql, values } = buildStudentUpdate(
       student,
       id,
-      req.file ? '/uploads/' + req.file.filename : undefined
+      req.file ? req.file.path : undefined
     );
     await db.query(sql, values);
     res.json({ message: 'Student updated successfully' });
@@ -711,15 +515,11 @@ app.put('/api/students/:id', upload.single('photo'), async (req, res) => {
   }
 });
 
-// DELETE student
 app.delete('/api/students/:id', async (req, res) => {
   try {
     const primaryKey = getStudentPrimaryKey();
-    const photoColumn = getStudentColumn('photo');
-    const selectedColumns = [quoteStudentColumn(primaryKey)];
-    if (photoColumn) selectedColumns.push(`${quoteStudentColumn(photoColumn)} AS photo`);
     const [students] = await db.query(
-      `SELECT ${selectedColumns.join(', ')} FROM students WHERE ${quoteStudentColumn(primaryKey)} = ?`,
+      `SELECT * FROM students WHERE ${quoteStudentColumn(primaryKey)} = ?`,
       [req.params.id]
     );
     if (students.length === 0) return res.status(404).json({ error: 'Student not found' });
@@ -729,22 +529,12 @@ app.delete('/api/students/:id', async (req, res) => {
       [req.params.id]
     );
 
-    const photo = students[0].photo;
-    if (photo && photo.startsWith('/uploads/')) {
-      const photoPath = path.join(uploadsDir, path.basename(photo));
-      await fs.promises.unlink(photoPath).catch((err) => {
-        if (err.code !== 'ENOENT') throw err;
-      });
-    }
-
     res.json({ message: 'Student deleted successfully' });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: 'Failed to delete student' });
   }
 });
 
-// GET dashboard stats (total students, per department)
 app.get('/api/stats', async (req, res) => {
   try {
     const [[total]] = await db.query('SELECT COUNT(*) as count FROM students');
@@ -754,43 +544,12 @@ app.get('/api/stats', async (req, res) => {
       : [[]];
     res.json({ total: total.count, byDepartment: byDept });
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: 'Failed to fetch stats' });
   }
 });
 
 async function startServer() {
-  try {
-    await db.query('ALTER TABLE students ADD COLUMN date_of_birth DATE');
-  } catch (err) {
-    if (err.code !== 'ER_DUP_FIELDNAME') throw err;
-  }
-
-  const columnAlterations = [
-    'ALTER TABLE students MODIFY COLUMN blood_group VARCHAR(10)',
-    'ALTER TABLE students MODIFY COLUMN board_10 VARCHAR(100)',
-    'ALTER TABLE students MODIFY COLUMN percentage_10 VARCHAR(50)',
-    'ALTER TABLE students MODIFY COLUMN board_12 VARCHAR(100)',
-    'ALTER TABLE students MODIFY COLUMN percentage_12 VARCHAR(50)',
-    'ALTER TABLE students MODIFY COLUMN cgpa VARCHAR(50)',
-    'ALTER TABLE students MODIFY COLUMN scholarship VARCHAR(100)',
-    'ALTER TABLE students MODIFY COLUMN college_name VARCHAR(255)',
-    'ALTER TABLE students MODIFY COLUMN linkedin VARCHAR(255)',
-    'ALTER TABLE students ADD COLUMN imported_fields JSON'
-  ];
-
-  for (const alterSql of columnAlterations) {
-    try {
-      await db.query(alterSql);
-    } catch (err) {
-      if (!['ER_BAD_FIELD_ERROR', 'ER_DUP_FIELDNAME'].includes(err.code)) {
-        console.warn(`Column migration skipped: ${alterSql} -> ${err.code || err.message}`);
-      }
-    }
-  }
-
   await loadStudentTableColumns();
-
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });

@@ -49,6 +49,8 @@ DB_NAME=student_management
 DB_PORT=3306
 PORT=5000
 ```
+Local MySQL connections (`localhost`, `127.0.0.1`, or `::1`) use no TLS; configure
+the actual MySQL password for `DB_PASSWORD` before starting the backend.
 
 ### 4. Install dependencies
 ```bash
