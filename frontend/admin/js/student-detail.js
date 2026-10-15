@@ -30,7 +30,8 @@ function renderView(s) {
   const photoEl = document.getElementById('viewPhoto');
   const initialsEl = document.getElementById('viewInitials');
   if (s.photo) {
-    photoEl.src = getPhotoUrl(s.photo);
+    const photoUrl = String(s.photo).trim();
+    photoEl.src = /^https?:\/\//i.test(photoUrl) ? photoUrl : getPhotoUrl(photoUrl);
     photoEl.onclick = () => showPhotoPreview(photoEl.src, `${s.name || 'Student'} photo`);
     photoEl.classList.add('photo-preview-trigger');
     photoEl.onerror = () => {

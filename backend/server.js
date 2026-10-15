@@ -8,7 +8,6 @@ const crypto = require('crypto');
 const multer = require('multer');
 const XLSX = require('xlsx');
 const cloudinary = require('cloudinary').v2;
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const db = require('./db');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
@@ -36,19 +35,35 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-const storage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    folder: 'student_profiles',
-    allowed_formats: ['jpg', 'png', 'jpeg', 'webp'],
-  },
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }
 });
-const upload = multer({ storage });
 
 const bulkUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 }
 });
+
+function uploadStudentPhoto(file) {
+  if (!file) return Promise.resolve(null);
+
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream({
+      folder: 'student_profiles',
+      allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+      resource_type: 'image'
+    }, (error, response) => {
+      if (error) return reject(error);
+      if (!response?.secure_url) {
+        return reject(new Error('Cloudinary did not return a secure URL for the student photo'));
+      }
+      resolve(response.secure_url);
+    });
+
+    stream.end(file.buffer);
+  });
+}
 
 // Serve frontend (Admin / IT / AIDS portals)
 const frontendDir = path.resolve(__dirname, '..', 'frontend');
@@ -463,8 +478,7 @@ app.post('/api/students', upload.single('photo'), async (req, res) => {
       return res.status(400).json({ error: `Scholarship must be valid` });
     }
     
-    // req.file.path gives the secure Cloudinary image URL
-    const photo = req.file ? req.file.path : null;
+    const photo = await uploadStudentPhoto(req.file);
 
     const student = {
       ...b,
@@ -495,6 +509,7 @@ app.put('/api/students/:id', upload.single('photo'), async (req, res) => {
       return res.status(400).json({ error: `Scholarship must be valid` });
     }
 
+    const photo = req.file ? await uploadStudentPhoto(req.file) : undefined;
     const student = {
       ...b,
       name: b.name ?? b.full_name,
@@ -505,7 +520,7 @@ app.put('/api/students/:id', upload.single('photo'), async (req, res) => {
     const { sql, values } = buildStudentUpdate(
       student,
       id,
-      req.file ? req.file.path : undefined
+      photo
     );
     await db.query(sql, values);
     res.json({ message: 'Student updated successfully' });
