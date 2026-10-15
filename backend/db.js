@@ -2,11 +2,10 @@ const mysql = require('mysql2');
 const path = require('path');
 const fs = require('fs');
 
-// Direct-ah TiDB cloud credentials-a configure panrom (Render error varatha irukka)
 const pool = mysql.createPool({
   host: 'gateway01.ap-southeast-1.prod.aws.tidbcloud.com',
-  user: '3whZrkV31XBoSEb.root',
-  password: 'R1EY5J7TzAKnF4Mo',
+  user: '3whZRkV31XBoSEb.root', // e.g. 3whZrkV31XBoSEb.root
+  password: 'YRhfMIWrWOHinC6U',
   database: 'student_management001',
   port: 4000,
   ssl: {
